@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initail-scale=1.0">
+	<title>Document</title>
+	<script language="Javascript">
+		var yello_meteo_cut = [187,137,87,37];
+		var yello_meteo_index = 0;
+		var blue_meteo_timer = 60;
+		var tile_recovery_timer = [100,100,100,100,100,100,100,100,100];
+		var tile_state = [0,0,0,0,0,0,0,0,0];
+		var tile_hp = [3,3,3,3,14,3,3,3,3];
+		var current_crashed_tile = 0;
+		var numClicks = 0;
+		var timeOut;
+			
+		function convertId2Index(id){
+			var index=-1;
+			switch(id){
+				case "twelve":
+					index = 0;
+					break;
+				case "one":
+					index = 1;
+					break;
+				case "three":
+					index = 2;
+					break;
+				case "eleven":
+					index = 3;
+					break;
+				case "zero":
+					index = 4;
+					break;
+				case "five":
+					index = 5;
+					break;
+				case "nine":
+					index = 6;
+					break;
+				case "seven":
+					index = 7;
+					break;
+				case "six":
+					index = 8;
+					break;
+				default:
+					alert("error");
+					break;
+			}
+			return index;
+		}
+
+		function convertIndex2Id(index){
+			var id="none";
+			switch(index){
+				case 0:
+					id = "twelve";
+					break;
+				case 1:
+					id = "one";
+					break;
+				case 2:
+					id = "three";
+					break;
+				case 3:
+					id = "eleven";
+					break;
+				case 4:
+					id = "zero";
+					break;
+				case 5:
+					id = "five";
+					break;
+				case 6:
+					id = "nine";
+					break;
+				case 7:
+					id = "seven";
+					break;
+				case 8:
+					id = "six";
+					break;
+				default:
+					alert("error");
+					break;
+			}
+			return id+"div";
+		}
+		
+		function updateTileHp(){
+			for(var i=0; i < tile_hp.length; i++){
+				document.getElementById(convertIndex2Id(i)).innerHTML = "[ "+tile_hp[i]+" ]";
+			}
+		}
+		
+		function startClick(id){
+			numClicks++;
+			switch(numClicks){
+				case 2:
+					reduceHpByYello(id);
+					break;
+				case 1:
+					var cmd = "reduceHp("+id+")";
+					timeOut=setTimeout(cmd,1000);
+					break;
+			}
+		}
+		
+		function configClickFunction(id){
+			if(numClicks == 2) reduceHpByYello(id);
+			else reduceHp(id);
+		}
+		
+		function reduceHp(id){
+			numClicks = 0;
+			id = id.id;
+			var index = convertId2Index(id);
+			if(index == -1){
+				alert("error: index out of range");
+				return ;
+			}
+
+			tile_hp[index]--;
+			if(tile_hp[index]==0)
+			{
+				alert(index+"타일 폭파");
+			}
+			updateTileHp();
+		}
+		
+		function reduceHpByYello(id){
+			numClicks = 0;
+		}
+	</script>
+	<style>
+		.tableClass {
+			width: 500px;
+			height: 500px;
+			position: relative;
+			top: 100px;
+			left: 100px;
+			transform: rotate(45deg);
+		}
+		div.vertical{
+			transform: rotate(-45deg);
+			-webkit-transform: rotate(-45deg); /* Safari/Chrome */
+			-moz-transform: rotate(-45deg);    /* Firefox */
+			-o-transform: rotate(-45deg);      /* Opera */
+			-ms-transform: rotate(-45deg);     /* IE 9 */
+		}
+		th, td{
+			text-align: center;
+			width: 50px;
+			height: 50px;
+		}
+		.buttonClass{
+			width: 30px;
+			height: 30px;
+			transform: rotate(45deg);
+	
+		}
+	</style>
+
+	<div style="float:left; margin-right:250px">
+	<table border="1", class="tableClass">
+		<tr>
+			<td id="twelve" onClick="startClick(id)" ondblclick="reduceHpByYello()"><div class="vertical">12</div><div class="vertical" id="twelvediv">[ 3 ]</div></td>
+			<td id="one" onClick="reduceHp(id)"><div class="vertical">1</div><div class="vertical" id="onediv">[ 3 ]</div></td>
+			<td id="three" onClick="reduceHp(id)"><div class="vertical">3</div><div class="vertical" id="threediv">[ 3 ]</div></td>
+		</tr>
+		<tr>
+			<td id="eleven" onClick="reduceHp(id)"><div class="vertical">11</div><div class="vertical" id="elevendiv">[ 3 ]</div></td>
+			<td id="zero" onClick="reduceHp(id)"><div class="vertical">0</div><div class="vertical" id="zerodiv">[ 14 ]</div></td>
+			<td id="five" onClick="reduceHp(id)"><div class="vertical">5</div><div class="vertical" id="fivediv">[ 3 ]</div></td>
+		</tr>
+		<tr>
+			<td id="nine" onClick="reduceHp(id)"><div class="vertical">9</div><div class="vertical" id="ninediv">[ 3 ]</div></td>
+			<td id="seven" onClick="reduceHp(id)"><div class="vertical">7</div><div class="vertical" id="sevendiv">[ 3 ]</div></td>
+			<td id="six" onClick="reduceHp(id)"><div class="vertical">6</div><div class="vertical" id="sixdiv">[ 3 ]</div></td>
+		</tr>
+	</table>
+	</div>
+	<div>
+	안내자리
+	</div>
+	<div id="timer_place"></div>
+</head>
+</html>
