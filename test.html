@@ -29,7 +29,6 @@
 		//TODO - 분배방식 안내 -> 나눠서 뿌릴건가, 모아서뿌릴건가
 		//TODO - 파란메테오 갯수로 클릭제한
 		//TODO - 딜에따라서 밀리는 case에 파란운석이 안맞을수도..ㅠㅠ - 잠재
-		//TODO - 에스더 comment style
 		//TODO - 문양, 문장 클립보드?
 		
 		function convertId2Index(id){
@@ -190,7 +189,6 @@
 		}
 		
 		function repeatBlueMeteo(){
-			//TODO : 파란 메테오 로그 disable
 			console.log("파란운석 생성");
 			if(blue_meteo_cnt < 4) blue_meteo_cnt++;
 			else blue_meteo_cnt--;
@@ -201,7 +199,11 @@
 		}
 		
 		function clearBlueMetemoTimer(){
-			console.log("찬미 진입으로 인해 Timer 초기화");
+			console.log("패턴 진입으로 인해 Timer 초기화");
+			if(document.getElementById("meteolog"+blueMeteolog).innerHTML != "파란운석 생성 완료"){
+				document.getElementById("meteolog"+blueMeteolog).innerHTML = "패턴 진입으로인한 운석 제거";
+				document.getElementById("meteolog"+blueMeteolog).style.color = "#999da0";
+			}
 			blue_meteo_cnt = 3;
 			clearTimeout(blue_meteo_alarm_obj);
 			clearTimeout(blue_meteo_timer_obj);
@@ -389,7 +391,7 @@
 			logLine++;
 			newP.setAttribute("id","log"+logLine);
 			document.getElementById("noticeCmt").insertBefore(newP,preObj);
-			document.getElementById("log"+logLine).innerHTML = "Next................. 32줄 2문양  에스더 #아제나(딜모자라는경우) or #이난나(딜안모자라면)";
+			document.getElementById("log"+logLine).innerHTML = "Next................. 32줄 2문양  <font color='green'>에스더 #아제나(딜모자라는경우) or #이난나(딜안모자라면)</font>";
 		}
 		
 		function sevenGimikProcess(){
@@ -402,6 +404,14 @@
 			newP.setAttribute("id","log"+logLine);
 			document.getElementById("noticeCmt").insertBefore(newP,preObj);
 			document.getElementById("log"+logLine).innerHTML = "Next................. 30줄 심연의악몽(12, 9, 3, 6시 타일 붕괴) 빡딜";
+			document.getElementById("twelvediv").innerHTML = "<font color='red'>더이상 복구안됨</font>";
+			document.getElementById("threediv").innerHTML = "<font color='red'>더이상 복구안됨</font>";
+			document.getElementById("ninediv").innerHTML = "<font color='red'>더이상 복구안됨</font>";
+			document.getElementById("sixdiv").innerHTML = "<font color='red'>더이상 복구안됨</font>";
+			blue_meteo_timer = 40; //TODO ::  Need to check
+			console.log("파란운석 타이머 변경 60->40s, 재가동");
+			blue_meteo_alarm_obj = setTimeout(alarmBlueMeteo,blue_meteo_timer*1000);
+			blue_meteo_timer_obj = setTimeout(repeatBlueMeteo,(blue_meteo_timer+10)*1000);
 			tile_hp[0] = tile_hp[2] = tile_hp[6] = tile_hp[8] = 0;
 			tile_state[0] = tile_state[2] = tile_state[6] = tile_state[8] = 0;
 			for(var i=0;i<tile_timer_obj.length;i++){
@@ -513,8 +523,9 @@
 	</br></br>
 	<div>
 	문양
-	<button class="firstFigure" onClick="gimikStateChange(0)">1문양 Clear</button>
-	<button class="secondFigur" onClick="gimikStateChange(6)">2문양 Clear</button>
+	<button class="firstFigure" onClick="gimikStateChange(0)">1문양 진입</button>
+	<button class="secondFigur" onClick="clearBlueMetemoTimer()">2문양 진입</button>
+	<button class="secondEndFigur" onClick="gimikStateChange(6)">2문양 Clear</button>
 	</div>
 	</br>
 	<div>
