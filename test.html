@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initail-scale=1.0">
+	<title>Document</title>
+	<script language="Javascript">
+		var yello_meteo_cut = [187,137,87,37];
+		var yello_meteo_index = 0;
+		//TODO - 확인, 2문양 이후 파란메테오 주기가 바뀌는가?
+		var blue_meteo_timer = 50; // 생성주기는 60초, alarm은 10초전에
+		var tile_recovery_timer = 100;
+		var tile_timer_state = [100,100,100,100,100,100,100,100,100];
+		var tile_timer_obj = [undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined];
+		var gimikState = [212,188,137,112,87,37,32,30];
+		var tile_state = [1,1,1,1,1,1,1,1,1];
+		var tile_hp = [3,3,3,3,14,3,3,3,3];
+		var current_crashed_tile = 0;
+		var ignoreTileCondition = 0;
+		var firstMeteo = 0;
+		var gimikStateIndex = 0;
+		var logLine = 0;
+		var blueMeteolog = 0;
+		var blue_meteo_timer_obj = '';
+		var blue_meteo_alarm_obj = '';
+		var blue_meteo_cnt=2;
+		
+		//TODO - 위험타일 안내 -> 뿌서지면 리트
+		//TODO - 분배방식 안내 -> 나눠서 뿌릴건가, 모아서뿌릴건가
+		//TODO - 파란메테오 갯수로 클릭제한
+		//TODO - 딜에따라서 밀리는 case에 파란운석이 안맞을수도..ㅠㅠ - 잠재
+		//TODO - 에스더 comment style
+		//TODO - 문양, 문장 클립보드?
+		
+		function convertId2Index(id){
+			var index=-1;
+			switch(id){
+				case "twelve":
+					index = 0;
+					break;
+				case "one":
+					index = 1;
+					break;
+				case "three":
+					index = 2;
+					break;
+				case "eleven":
+					index = 3;
+					break;
+				case "zero":
+					index = 4;
+					break;
+				case "five":
+					index = 5;
+					break;
+				case "nine":
+					index = 6;
+					break;
+				case "seven":
+					index = 7;
+					break;
+				case "six":
+					index = 8;
+					break;
+				default:
+					alert("error");
+					break;
+			}
+			return index;
+		}
+
+		function convertIndex2Id(index){
+			var id="none";
+			switch(index){
+				case 0:
+					id = "twelve";
+					break;
+				case 1:
+					id = "one";
+					break;
+				case 2:
+					id = "three";
+					break;
+				case 3:
+					id = "eleven";
+					break;
+				case 4:
+					id = "zero";
+					break;
+				case 5:
+					id = "five";
+					break;
+				case 6:
+					id = "nine";
+					break;
+				case 7:
+					id = "seven";
+					break;
+				case 8:
+					id = "six";
+					break;
+				default:
+					alert("error");
+					break;
+			}
+			return id;
+		}
+
+		function updateTileTimer(index){
+			tile_timer_state[index]--;
+			var min = parseInt(tile_timer_state[index]/60);
+			var sec = tile_timer_state[index]%60;
+			var id = convertIndex2Id(index);
+			document.getElementById(id+"Timer").innerHTML = min+":"+sec;
+			if(tile_timer_state[index] <= 10){
+				document.getElementById(id+"Timer").style.color="#0000f0";
+				if(document.getElementById(id+"Cmt").innerHTML==""){
+					document.getElementById(id+"Cmt").innerHTML = "복구 임박";
+					document.getElementById(id+"Cmt").style.color="#0000f0";
+				}
+			}
+		}
+		
+		function updateTileHp(){
+			var log = "";
+			for(var i=0; i < tile_hp.length; i++){
+				log += tile_hp[i]+" ";
+				if(tile_hp[i] == 0){
+					document.getElementById(convertIndex2Id(i)).style.backgroundColor = '#222021';
+					document.getElementById(convertIndex2Id(i)).style.backgroundImage = '';
+				}
+				else if(tile_hp[i] == 1){
+					document.getElementById(convertIndex2Id(i)).style.backgroundImage = 'radial-gradient(#1c2951 50%, #c49102)';
+				}
+				else if((i!=4 && tile_hp[i] != 3)||(i==4 && tile_hp[i] != 14)){
+					if(document.getElementById(convertIndex2Id(i)).style.backgroundImage == ''){
+						var rand_x = Math.floor(Math.random()*100);
+						var rand_y = Math.floor(Math.random()*100);
+						document.getElementById(convertIndex2Id(i)).style.backgroundImage = 'radial-gradient(at '+rand_x+'% '+rand_y+'%,#1c2951 70%, #c49102 72%, #1c2951 75%)';
+					}
+				}
+				else{
+					document.getElementById(convertIndex2Id(i)).style.backgroundColor = '#1c2951';
+					document.getElementById(convertIndex2Id(i)).style.backgroundImage = '';
+				}
+				if(i==4){
+					document.getElementById(convertIndex2Id(i)+"div").innerHTML = tile_hp[i];
+				}
+			}
+			console.log("Current Tile HP state : "+log);
+		}
+		
+		function checkRetry(){
+			var res = false;
+			if(gimikStateIndex < 7){
+				var current_crashed_tile = 0;
+				for(var i=0;i<tile_hp.length;i++){
+					if(tile_hp[i]<=0) current_crashed_tile++;
+				}
+				if(current_crashed_tile >= 4) res = true;
+				if(tile_state[4] == 0) res = true;
+				if(tile_state[0] == 0 && tile_state[1] == 0 && tile_state[2] == 0) res = true;
+				if(tile_state[0] == 0 && tile_state[3] == 0 && tile_state[6] == 0) res = true;
+				if(tile_state[2] == 0 && tile_state[5] == 0 && tile_state[8] == 0) res = true;
+				if(tile_state[6] == 0 && tile_state[7] == 0 && tile_state[8] == 0) res = true;
+				console.log("Check Retry State : 현재 붕괴된 타일 수("+current_crashed_tile+")");
+				console.log("Check Retry State : 타일 상태 ["+tile_state[0]+","+tile_state[1]+","+tile_state[2]+","+tile_state[3]+","+tile_state[4]+","+tile_state[5]+","+tile_state[6]+","+tile_state[7]+","+tile_state[8]+"]");
+				//TODO : add 가운데 타일 일정데미지이상 입었을 때
+			}else{
+				if(tile_state[4] == 0) res = true;
+			}
+			return res;
+		}
+		
+		function alarmBlueMeteo(){
+			console.log("다음 파란운석 생성까지 10초내외 ("+blue_meteo_cnt+" 개)");
+			var preObj='';
+			if(blueMeteolog == 0){
+				preObj = document.getElementById("log"+logLine);
+			}else{
+				preObj = document.getElementById("meteolog"+blueMeteolog);
+			}
+			blueMeteolog++;
+			var newP = document.createElement("p");
+			console.log(newP);
+			newP.setAttribute("id","meteolog"+blueMeteolog);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("meteolog"+blueMeteolog).innerHTML = "[Meteo Noti] 다음 파란운석 생성까지 10초내외 ( "+blue_meteo_cnt+"개 )";
+			document.getElementById("meteolog"+blueMeteolog).style.color = "#f00000";
+		}
+		
+		function repeatBlueMeteo(){
+			//TODO : 파란 메테오 로그 disable
+			console.log("파란운석 생성");
+			if(blue_meteo_cnt < 4) blue_meteo_cnt++;
+			else blue_meteo_cnt--;
+			document.getElementById("meteolog"+blueMeteolog).innerHTML = "파란운석 생성 완료";
+			document.getElementById("meteolog"+blueMeteolog).style.color = "#999da0";
+			blue_meteo_alarm_obj = setTimeout(alarmBlueMeteo,blue_meteo_timer*1000);
+			blue_meteo_timer_obj = setTimeout(repeatBlueMeteo,(blue_meteo_timer+10)*1000);
+		}
+		
+		function clearBlueMetemoTimer(){
+			console.log("찬미 진입으로 인해 Timer 초기화");
+			blue_meteo_cnt = 3;
+			clearTimeout(blue_meteo_alarm_obj);
+			clearTimeout(blue_meteo_timer_obj);
+		}
+		
+		function recoverTile(index){
+			if(gimikStateIndex < 7 || (gimikStateIndex==7&&(index%2!=0))){
+				clearInterval(tile_timer_obj[index]);
+				tile_timer_obj[index] = undefined;
+				tile_state[index] = 1;
+				tile_hp[index] = 3;
+				tile_timer_state[index] = tile_recovery_timer;
+				document.getElementById(convertIndex2Id(index)+"Timer").innerHTML = parseInt(tile_timer_state[index]/60)+":"+tile_timer_state[index]%60;
+				document.getElementById(convertIndex2Id(index)+"Timer").style.color="#000000";
+				document.getElementById(convertIndex2Id(index)+"Cmt").innerHTML = "";
+				document.getElementById(convertIndex2Id(index)+"Cmt").style.color="#000000";
+				updateTileHp();
+			}
+		}
+
+		function reduceHp(id){
+			if(gimikStateIndex == 0) return false;
+			if(gimikStateIndex == 3) gimikStateChange();
+			var index = convertId2Index(id);
+			if(index == -1){
+				alert("error: index out of range");
+				return ;
+			}
+
+			if(tile_hp[index] > 0){
+				tile_hp[index]--;
+				if(tile_hp[index]==0){
+					current_crashed_tile++;
+					tile_state[index]=0;
+					setTimeout(recoverTile,tile_recovery_timer*1000,index);
+					tile_timer_obj[index] = setInterval(updateTileTimer,1000,index);
+					if(checkRetry()){
+						var returnValue = confirm("재시작이 필요합니다");
+						if(returnValue){
+							history.go(0);
+						}
+					}
+				}
+				updateTileHp();
+			}
+		}
+		
+		function reduceHpByYello(id){
+			if(gimikStateIndex != 1 && gimikStateIndex != 2 && gimikStateIndex !=4 && gimikStateIndex != 5) return false;
+			var index = convertId2Index(id);
+			if(index == -1){
+				alert("error: index out of range");
+				return ;
+			}
+			//0 - 0, 1, 3, 4
+			//2 - 1, 2, 4, 5
+			//6 - 3, 4, 6, 7
+			//8 - 4, 5, 7, 8
+			if(firstMeteo == 0) {
+				firstMeteo = 1;
+				blue_meteo_alarm_obj = setTimeout(alarmBlueMeteo,blue_meteo_timer*1000);
+				blue_meteo_timer_obj = setTimeout(repeatBlueMeteo,(blue_meteo_timer+10)*1000);		
+			}
+			gimikStateChange(gimikStateIndex);
+			if(tile_hp[index] > 0){
+				tile_hp[index]-=3;
+				switch(index){
+					case 0:
+						tile_hp[1]-=3;
+						tile_hp[3]-=3;
+						tile_hp[4]-=3;
+						break;
+					case 2:
+						tile_hp[1]-=3;
+						tile_hp[4]-=3;
+						tile_hp[5]-=3;
+						break;
+					case 6:
+						tile_hp[3]-=3;
+						tile_hp[4]-=3;
+						tile_hp[7]-=3;
+						break;
+					case 8:
+						tile_hp[4]-=3;
+						tile_hp[5]-=3;
+						tile_hp[7]-=3;
+						break;
+					default:
+						alert("Retry");
+						break;
+				}
+				for(var i=0;i<tile_hp.length;i++){
+					if(tile_hp[i] <= 0){
+						tile_hp[i] = 0;
+						tile_state[i] = 0;
+						if(checkRetry()){
+							var returnValue = confirm("재시작이 필요합니다");
+							if(returnValue){
+								history.go(0);
+								break;
+							}else{
+								break;
+							}
+						}
+						if(tile_timer_obj[i] == undefined){
+							setTimeout(recoverTile,tile_recovery_timer*1000,i);
+							tile_timer_obj[i] = setInterval(updateTileTimer,1000,i);
+						}
+					}
+				}
+				updateTileHp();
+			}
+			return false;
+		}
+				
+		function firstGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 188줄 맞이하라(노란메테오)   <font color='green'>에스더 #아제나</font>";
+		}
+		
+		function secondGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 137줄 노란메테오";
+		}
+		
+		function thirdGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 112줄 찬미하라  <font color='green'>에스더 #샨디(전) -> #아제나(후)</font>";
+		}
+		
+		function forthGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 87줄 노란메테오";
+			blue_meteo_alarm_obj = setTimeout(alarmBlueMeteo,blue_meteo_timer*1000);
+			blue_meteo_timer_obj = setTimeout(repeatBlueMeteo,(blue_meteo_timer+10)*1000);
+			console.log("내부조 탈출 이후 파란메테오 타이머 재가동");
+		}
+		
+		function fifthGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 37줄 노란메테오";
+		}
+		
+		function sixGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 32줄 2문양  에스더 #아제나(딜모자라는경우) or #이난나(딜안모자라면)";
+		}
+		
+		function sevenGimikProcess(){
+			var preObj = document.getElementById("log"+logLine);
+			preObj.innerHTML = preObj.innerHTML.replace('Next................. ','Complete....... ');
+			preObj.style.color = "#999da0";
+			var newP = document.createElement("p");
+			console.log(newP);
+			logLine++;
+			newP.setAttribute("id","log"+logLine);
+			document.getElementById("noticeCmt").insertBefore(newP,preObj);
+			document.getElementById("log"+logLine).innerHTML = "Next................. 30줄 심연의악몽(12, 9, 3, 6시 타일 붕괴) 빡딜";
+			tile_hp[0] = tile_hp[2] = tile_hp[6] = tile_hp[8] = 0;
+			tile_state[0] = tile_state[2] = tile_state[6] = tile_state[8] = 0;
+			for(var i=0;i<tile_timer_obj.length;i++){
+				if(i%2==0 && tile_timer_obj[i] != undefined){
+					clearInterval(tile_timer_obj[i]);
+					updateTileTimer(i);
+				}
+			}
+			updateTileHp();
+		}
+		
+		function processGimikState(){
+			switch(gimikStateIndex){
+				case 1:
+					firstGimikProcess();
+					break;
+				case 2:
+					secondGimikProcess();
+					break;
+				case 3:
+					thirdGimikProcess();
+					break;
+				case 4:
+					forthGimikProcess();
+					break;
+				case 5:
+					fifthGimikProcess()
+					break;
+				case 6:
+					sixGimikProcess();
+					break;
+				case 7:
+					sevenGimikProcess();
+					break;
+				default:
+					break;
+			}
+		}
+		
+		function gimikStateChange(prevIndex){
+			if(gimikStateIndex != prevIndex) return false;
+			gimikStateIndex = prevIndex+1;
+			console.log("Current Gimik State : "+gimikStateIndex);
+			processGimikState();
+		}
+	</script>
+	<style>
+		.tableClass {
+			width: 500px;
+			height: 500px;
+			position: relative;
+			top: 100px;
+			left: 100px;
+			transform: rotate(45deg);
+		}
+		div.vertical{
+			transform: rotate(-45deg);
+			font-size: 30px;
+			color: white;
+			-webkit-transform: rotate(-45deg); /* Safari/Chrome */
+			-moz-transform: rotate(-45deg);    /* Firefox */
+			-o-transform: rotate(-45deg);      /* Opera */
+			-ms-transform: rotate(-45deg);     /* IE 9 */
+		}
+		.gridClass{
+			text-align: center;
+			width: 50px;
+			height: 50px;
+		}
+		.buttonClass{
+			width: 30px;
+			height: 30px;
+			transform: rotate(45deg);
+	
+		}
+		.timerTableClass{
+			width: 50px;
+			height: 10px;
+		}
+		
+		p{
+			line-height: 0.4;
+		}
+	</style>
+
+	<div style="float:left; margin-right:250px">
+	<table border="1", class="tableClass">
+		<tr>
+			<td id="twelve" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="twelvediv"></div></td>
+			<td id="one" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="onediv"></div></td>
+			<td id="three" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="threediv"></div></td>
+		</tr>
+		<tr>
+			<td id="eleven" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="elevendiv"></div></td>
+			<td id="zero" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div class="vertical" id="zerodiv"> 14 </div></td>
+			<td id="five" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="fivediv"></div></td>
+		</tr>
+		<tr>
+			<td id="nine" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="ninediv"></div></td>
+			<td id="seven" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="sevendiv"></div></td>
+			<td id="six" class="gridClass" bgcolor="#1c2951" onClick="reduceHp(id)" oncontextmenu="return reduceHpByYello(id)"><div id="sixdiv"></div></td>
+		</tr>
+	</table>
+	</div>
+	!!--Noti--!!
+	<div style="overflow:auto; width:700px; height:200px;" id="noticeCmt">
+	<p id="log0">Next................. 212줄 1문양</p>
+	</div>
+	</br></br>
+	<div>
+	문양
+	<button class="firstFigure" onClick="gimikStateChange(0)">1문양 Clear</button>
+	<button class="secondFigur" onClick="gimikStateChange(6)">2문양 Clear</button>
+	</div>
+	</br>
+	<div>
+	찬미
+	<button class="ThirdFigure" onClick="clearBlueMetemoTimer()">찬미진입</button>
+	<button class="ThirdFigure" onClick="gimikStateChange(3)">찬미내부조탈출</button>
+	</div>
+	</br></br>
+	<div>
+	<table>
+		<tr><td>12시</td><td style="width:30px;"/><td id="twelveTimer">1:40</td><td style="width:30px;"/><td id="twelveCmt"></td></tr>
+		<tr><td >11시</td><td/><td id="elevenTimer">1:40</td><td/><td id="elevenCmt"></td></tr>
+		<tr><td>1시</td><td/><td id="oneTimer">1:40</td><td/><td id="oneCmt"></td></tr>
+		<tr><td>9시</td><td/><td id="nineTimer">1:40</td><td/><td id="nineCmt"></td></tr>
+		<tr><td>0시</td><td/><td id="zeroTimer">1:40</td><td/><td id="zeroCmt" style="color:#f00000;">!절대 부서지면 안됨!</td></tr>
+		<tr><td>3시</td><td/><td id="threeTimer">1:40</td><td/><td id="threeCmt"></td></tr>
+		<tr><td>7시</td><td/><td id="sevenTimer">1:40</td><td/><td id="sevenCmt"></td></tr>
+		<tr><td>5시</td><td/><td id="fiveTimer">1:40</td><td/><td id="fiveCmt"></td></tr>
+		<tr><td>6시</td><td/><td id="sixTimer">1:40</td><td/><td id="sixCmt"></td></tr>
+	</table>
+	</div>
+</head>
+</html>
